@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>BINGO</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{
+font-family:sans-serif;
+background:#0b1530;
+color:white;
+text-align:center;
+margin:0;
+padding:20px;
+}
+button{
+font-size:18px;
+padding:12px 20px;
+margin:10px;
+border-radius:10px;
+border:none;
+}
+.grid{
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:5px;
+max-width:300px;
+margin:auto;
+}
+.cell{
+background:#1c2a5c;
+padding:15px;
+border-radius:6px;
+}
+.hit{
+background:#2ecc71;
+}
+</style>
+</head>
+<body>
+
+<h1>🎉 BINGO 🎉</h1>
+<div id="info"></div>
+<div id="host"></div>
+<div id="card" class="grid"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+
+
+const firebaseConfig = {
+apiKey:"AIzaSyBaRpc7J7dwgvLLgzV5dM5YHDgIYa9bQWU",
+authDomain:"bibibingo-72f63.firebaseapp.com",
+databaseURL:"https://bibibingo-72f63-default-rtdb.firebaseio.com",
+projectId:"bibibingo-72f63"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const url = new URL(location.href);
+const room = url.searchParams.get("room") || "bingo";
+const host = url.searchParams.get("host");
+const screen = url.searchParams.get("screen");
+
+document.getElementById("info").innerText = "ROOM: " + room;
+
+const numbersRef = db.ref("rooms/"+room+"/numbers");
+const drawRef = db.ref("rooms/"+room+"/draw");
+
+let myCard = [];
+let drawn = [];
+
+function makeCard(){
+let nums = [];
+while(nums.length<25){
+let n=Math.floor(Math.random()*75)+1;
+if(!nums.includes(n)) nums.push(n);
+}
+nums[12]="FREE";
+myCard = nums;
+renderCard();
+}
+
+function renderCard(){
+const card=document.getElementById("card");
+card.innerHTML="";
+myCard.forEach(n=>{
+let div=document.createElement("div");
+div.className="cell";
+div.innerText=n;
+if(drawn.includes(n)) div.classList.add("hit");
+card.appendChild(div);
+});
+}
+
+drawRef.on("value",snap=>{
+drawn = snap.val()||[];
+renderCard();
+});
+
+if(!screen){
+makeCard();
+}
+
+if(host){
+document.getElementById("host").innerHTML=`
+<button onclick="draw()">抽選</button>
+<button onclick="reset()">リセット</button>
+<p>参加QR</p>
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${location.origin+location.pathname+"?room="+room}">
+`;
+}
+
+function draw(){
+let n=Math.floor(Math.random()*75)+1;
+drawRef.once("value").then(s=>{
+let arr=s.val()||[];
+if(!arr.includes(n)){
+arr.push(n);
+drawRef.set(arr);
+play();
+}
+});
+}
+
+function reset(){
+drawRef.set([]);
+}
+
+function play(){
+const a=new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+a.play();
+}
+
+</script>
+
+</body>
+</html>
